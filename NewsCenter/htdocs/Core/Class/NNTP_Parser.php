@@ -2,7 +2,7 @@
 /**********************************************************************************
 *     NewsCenter
 *     /Core/Class/NNTP_Parser.php
-*     Version: $Id: NNTP_Parser.php,v 1.2 2004/10/09 16:37:23 jcrawford Exp $
+*     Version: $Id: NNTP_Parser.php,v 1.3 2004/10/13 00:49:01 exodus Exp $
 *     Copyright (c) 2004, The NewsCenter Development Team
 
 *     Permission is hereby granted, free of charge, to any person obtaining
@@ -32,7 +32,7 @@ class NNTP_Parser //implements INNTP_Parser
 	
 	function __construct()
 	{
-		
+		$this->m_nntpSocket = new TcpSocket();
 	}
 	
 	function __destruct()
@@ -40,26 +40,55 @@ class NNTP_Parser //implements INNTP_Parser
 		$this->m_nntpSocket=NULL;
 	}
 	
-	public function Connect($serverName)
+	public function connect($serverName)
 	{
-		$m_nntpSocket = new TcpSocket();
-		if($m_nntpSocket->connect($serverName, 119))
+		if($this->m_nntpSocket->connect($serverName, 119))
 		{
-			$connectResponse = $m_nntpSocket->getData();
-			return $connectResponse;	
+			$connectResponse = $this->m_nntpSocket->getData();
+			
+			if(!$connectResponse==FALSE)
+			{
+				$connectarr = array("ResponseCode" => substr($connectResponse, 0, 3),
+									"ResponseMsg" => substr($connectResponse, 4));
+				return $connectarr;	
+			}
+			return FALSE;
 		}
+		return FALSE;
 	}
 	
-	public function ListGroups()
+	public function listGroups()
 	{
-		if($m_nntpSocket != NULL && $m_nntpSocket->IsConnected)
+		if($this->m_nntpSocket != NULL && $this->m_nntpSocket->IsConnected)
 		{
-			if(!$m_nntpSocket->sendData("LIST\n")==FALSE)
+			if(!$this->m_nntpSocket->sendData("LIST\n")==FALSE)
 			{
-				$listResponse = $m_nntpSocket->getData();
-				return $listResponse;
+				$listResponse = $this->m_nntpSocket->getData();
+				
+				if(!$listResponse==FALSE)
+				{
+					$listarr = split("\n", $listResponse);
+					$index=FALSE;
+					$linearr = NULL;
+					
+					foreach($listarr as $line)
+					{
+						if($index==FALSE)
+						{
+							$index=TRUE;
+							$linearr[] = array("ResponseCode" => substr($line, 0, 3),
+											"ResponseMsg" => substr($line, 4));
+						}
+						else
+							$linearr[] = split(" ", $line);
+					}
+					return $linearr;
+				}
+				return FALSE;	
 			}
+			return FALSE;
 		}
+		return FALSE;
 	}
 }
 
