@@ -2,7 +2,7 @@
 /**********************************************************************************
 *     NewsCenter
 *     /index.php
-*     Version: $Id: index.php,v 1.1 2004/10/08 21:25:29 jcrawford Exp $
+*     Version: $Id: index.php,v 1.2 2004/10/09 01:53:21 jcrawford Exp $
 *     Copyright (c) 2004, The NewsCenter Development Team
 
 *     Permission is hereby granted, free of charge, to any person obtaining
@@ -31,7 +31,7 @@ include('global.php');
 
 
 try {
-
+	$tpl = Template::getInstance();
 	$sock = new TcpSocket();
 	$sock->connect('news.php.net', 119);
 	echo $sock->getData();
@@ -39,6 +39,24 @@ try {
 	echo $sock->getData();
 	$sock->close();
 
+} catch(TcpSocketEx $e) {
+	echo 'TCP SOCKET EXCEPTION<BR>';
+	echo 'Message: '.$e->getMessage().'<br>';
+	echo 'File: '.$e->getFile().'<br>';
+	echo 'Line: '.$e->getLine().'<br>';
+	echo '<br>';
+	echo 'Trace: <pre>';
+	print_r($e->getTrace());
+	echo '</pre>';
+} catch (TemplateEx $e) {
+	echo 'TEMPLATE EXCEPTION<BR>';
+	echo 'Message: '.$e->getMessage().'<br>';
+	echo 'File: '.$e->getFile().'<br>';
+	echo 'Line: '.$e->getLine().'<br>';
+	echo '<br>';
+	echo 'Trace: <pre>';
+	print_r($e->getTrace());
+	echo '</pre>';
 } catch (Exception $e) {
 	unset($db);
 	echo '<BR>!!! ERROR !!!<br><br>';

@@ -2,7 +2,7 @@
 /**********************************************************************************
 *     NewsCenter
 *     /include/constants.php
-*     Version: $Id: constants.php,v 1.1 2004/10/08 21:25:29 jcrawford Exp $
+*     Version: $Id: constants.php,v 1.2 2004/10/09 01:53:21 jcrawford Exp $
 *     Copyright (c) 2004, The NewsCenter Development Team
 
 *     Permission is hereby granted, free of charge, to any person obtaining
@@ -25,6 +25,8 @@
 *     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 *     SOFTWARE.
 *********************************************************************************/
+
+define('BASE_PATH', 'E:\htdocs\NewsCenter');
 
 define("DEFAULT_DB_TYPE", 		"MYSQL");
 define("DEFAULT_DB_HOST", 		"localhost");
