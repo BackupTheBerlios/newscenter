@@ -2,7 +2,7 @@
 /**********************************************************************************
 *     NewsCenter
 *     /index.php
-*     Version: $Id: index.php,v 1.2 2004/10/09 01:53:21 jcrawford Exp $
+*     Version: $Id: index.php,v 1.3 2004/10/09 11:29:33 jcrawford Exp $
 *     Copyright (c) 2004, The NewsCenter Development Team
 
 *     Permission is hereby granted, free of charge, to any person obtaining
@@ -35,8 +35,15 @@ try {
 	$sock = new TcpSocket();
 	$sock->connect('news.php.net', 119);
 	echo $sock->getData();
-	$sock->sendData('group php.general');
+	echo '<br>';
+	$sock->sendData("group php.general\n");
 	echo $sock->getData();
+	echo '<br>';
+	$sock->sendData("HEAD 199050\n");
+	while($data=$sock->getData()) {
+		echo $data;
+	}
+	echo '<br>';
 	$sock->close();
 
 } catch(TcpSocketEx $e) {
