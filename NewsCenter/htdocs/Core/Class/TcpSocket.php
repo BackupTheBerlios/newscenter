@@ -3,7 +3,7 @@
 /**********************************************************************************
 *     NewsCenter
 *     /Core/Class/TcpSocket.php
-*     Version: $Id: TcpSocket.php,v 1.2 2004/10/09 06:21:33 exodus Exp $
+*     Version: $Id: TcpSocket.php,v 1.3 2004/10/09 14:06:52 exodus Exp $
 *     Copyright (c) 2004, The NewsCenter Development Team
 
 *     Permission is hereby granted, free of charge, to any person obtaining
@@ -174,11 +174,12 @@ class TcpSocket implements ITcpSocket
 			{
 				do //loop until all available data is received into the buffer.
 				{
+					$in_data = NULL;
 					socket_recv($this->m_socket, $in_data, 
 									$this->ReceiveBuffer, 0);						
 					$totaldata .= $in_data;
 					
-				} while(!socket_select($sockarr, $w = NULL, $e = NULL, 0) === FALSE);	
+				} while(!socket_select($sockarr, $w = NULL, $e = NULL, 1) === FALSE);	
 				
 				return $totaldata;
 			}
