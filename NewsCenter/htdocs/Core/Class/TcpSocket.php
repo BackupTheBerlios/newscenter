@@ -3,7 +3,7 @@
 /**********************************************************************************
 *     NewsCenter
 *     /Core/Class/TcpSocket.php
-*     Version: $Id: TcpSocket.php,v 1.1 2004/10/08 21:25:29 jcrawford Exp $
+*     Version: $Id: TcpSocket.php,v 1.2 2004/10/09 06:21:33 exodus Exp $
 *     Copyright (c) 2004, The NewsCenter Development Team
 
 *     Permission is hereby granted, free of charge, to any person obtaining
@@ -27,57 +27,23 @@
 *     SOFTWARE.
 *********************************************************************************/
 
-/***********************************************************
-*TODOs & IDEAS for v1.1 beta
-*1. implement better exception handling
-*2. make my own TcpSocketEx (exception) class
-*3. update receive method to receive to buffer until no data is
-*	readily available.
-	
-*************************************************************/
-
-include ("ITcpSocket.php");
+include_once ("ITcpSocket.php");
 
 define("DEFAULT_LOCAL_IP", "127.0.0.1");
 
 class TcpSocket implements ITcpSocket
 {
-
+	
 	//properties array
 	private $props;
-	
-	private $m_selectInterval;
-	
-	//remote end point information
-	private $m_RemoteHost;
-	private $m_RemoteIP;
-	private $m_RemotePort;
-	
-	//local info
-	private $m_localHost;
-	private $m_localIP;
-	private $m_localPort;
-	
 	private $m_socket; //socket handle
 	
-	//socket state booleans
-	private $connected = FALSE;
-	private $listening = FALSE;
-	
-
 	function __construct()
 	{
-		$this->m_localHost = $_SERVER['SERVER_NAME']; //get local host name
-		$this->m_localIP = gethostbyname($this->m_localHost); //get local IP
-		$this->m_receiveBuffer = 8192; //8k
-		$this->m_selectInterval = 500; // half a second; 500 milliseconds
-		
 		//initialize our properties array
-		$this->props = array("RemoteHost" => $this->m_RemoteHost, "RemoteIP" => $this->m_RemoteIP, 
-					"RemotePort" => $this->m_RemotePort, "LocalHost" => $this->m_localHost,
-					"LocalIP" => $this->m_localIP, "LocalPort" => $this->m_localPort,
-					"IsConnected" => $this->connected, "IsListening" => $this->listening,
-					"SelectInterval" => $this->m_selectInterval, "SocketHandle" => $this->m_socket);
+		$this->resetprops();			
+		$this->props["LocalHost"] = $_SERVER['SERVER_NAME'];
+		$this->props["LocalIP"] = gethostbyname($this->LocalHost);
 	}
 	
 	function __destruct()
@@ -88,7 +54,7 @@ class TcpSocket implements ITcpSocket
 	public function connect($remoteHost, $remotePort)
 	{
 		//make sure we aren't already connected
-		if($this->m_socket==NULL || !$this->connected)
+		if($this->m_socket==NULL || !$this->IsConnected)
 		{
 			//here we will check if the remoteHost argument is local
 			//if so there is no need to resolve the Host addy.
@@ -96,22 +62,20 @@ class TcpSocket implements ITcpSocket
 			switch($remoteHost)
 			{
 				case "localhost": case DEFAULT_LOCAL_IP:
-				case $this->m_localHost: case $this->m_localIP:
+				case $this->LocalHost: case $this->LocalIP:
 				
-					$this->m_localPort = $remotePort;
+					$this->props["LocalPort"] = $remotePort;
 					
-					return $this->init_connect($this->m_localIP, $remotePort);
-					
+					return $this->init_connect($this->LocalIP, $remotePort);
 				break;
 				
 				default :
-				
-					$this->m_RemoteIP = gethostbyname($remoteHost);
-					$this->m_RemoteHost = gethostbyaddr($this->m_RemoteIP);
-					$this->m_RemotePort = $remotePort;
+					//remote end point info
+					$this->props["RemoteIP"] = gethostbyname($remoteHost);
+					$this->props["RemoteHost"] = gethostbyaddr($this->RemoteIP);
+					$this->props["RemotePort"] = $remotePort;
 					
-					return $this->init_connect($this->m_RemoteIP, $remotePort);
-					
+					return $this->init_connect($this->RemoteIP, $remotePort);	
 				break;	
 			}	
 		}
@@ -127,8 +91,7 @@ class TcpSocket implements ITcpSocket
 			if(socket_connect($this->m_socket, $ip, $port))
 			{
 				$this->init_socket();
-				
-				$this->connected = TRUE;
+				$this->props["IsConnected"] = TRUE;
 				return TRUE;
 			}
 			
@@ -139,22 +102,30 @@ class TcpSocket implements ITcpSocket
 	public function listen($localPort, $pendingMax)
 	{
 		//make sure our socket is not already in use.
-		if($this->m_socket==NULL)
+		if($this->m_socket==NULL & $this->IsConnected==FALSE)
 		{
 			$soc = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 			
-			socket_bind($soc, $this->m_localIP, $localPort);
-			
-			socket_listen($soc, $pendingMax);
-			$this->m_localPort = $m_localPort;
-			$this->listening = TRUE;
+			if(!socket_bind($soc, $this->LocalIP, $localPort))
+				return FALSE;
+				
+			if(!socket_listen($soc, $pendingMax))
+				return FALSE;
+				
+			$this->props["LocalPort"] = $localPort;
+			$this->props["IsListening"] = TRUE;
 			
 			$this->m_socket = socket_accept($soc);
 			
 			if($this->m_socket != FALSE)
 			{
-				$this->listening = FALSE;
-				$this->connected = TRUE;
+				$this->props["IsListening"] = FALSE;
+				$this->props["IsConnected"] = TRUE;
+				
+				//remote end point information
+				$this->props["RemotePort"] = $localPort;
+				socket_getpeername($this->m_socket, $this->props["RemoteIP"]);
+				$this->props["RemoteHost"] = gethostbyaddr($this->props["RemoteIP"]);
 				
 				$this->init_socket();
 	
@@ -170,17 +141,17 @@ class TcpSocket implements ITcpSocket
 	
 	private function init_socket()
 	{
-		set_socket_blocking($this->m_socket); //sets the socket to blocking mode
-		socket_set_option($this->m_socket, SOL_SOCKET, SO_RCVBUF, 8192);
+		socket_set_block($this->m_socket); //sets the socket to blocking mode
+		socket_set_option($this->m_socket, SOL_SOCKET, SO_RCVBUF, $this->ReceiveBuffer);
 	}
 	
 	public function sendData($packet)
 	{
 		//make sure socket handle is initialized & connected
-		if($this->m_socket != NULL && $this->connected==TRUE)
+		if($this->m_socket != NULL && $this->IsConnected==TRUE)
 		{
 			//this will make sure the socket is writeable
-			if(!(socket_select($r = NULL, $sockarr = array($this->m_socket), $e = NULL, $this->m_selectInterval)) === FALSE)
+			if(!(socket_select($r = NULL, $sockarr = array($this->m_socket), $e = NULL, $this->SelectInterval)) === FALSE)
 			{
 				$s = socket_send($this->m_socket, $packet, strlen($packet), 0);
 				
@@ -195,16 +166,23 @@ class TcpSocket implements ITcpSocket
 	public function getData()
 	{
 		//make sure socket isn't NULL & is connected
-		if($this->m_socket != NULL && $this->connected==TRUE)
+		if($this->m_socket != NULL && $this->IsConnected==TRUE)
 		{
-			if((!socket_select($sockarr = array($this->m_socket), $w = NULL, $e = NULL, $this->m_selectInterval)) === FALSE)
+			$sockarr = array($this->m_socket);
+			//make sure socket is readable
+			if(!socket_select($sockarr, $w = NULL, $e = NULL, $this->SelectInterval) === FALSE)
 			{
-				$rcvbuff = socket_get_option($this->m_socket, SOL_SOCKET, SO_RCVBUF);
+				do //loop until all available data is received into the buffer.
+				{
+					socket_recv($this->m_socket, $in_data, 
+									$this->ReceiveBuffer, 0);						
+					$totaldata .= $in_data;
+					
+				} while(!socket_select($sockarr, $w = NULL, $e = NULL, 0) === FALSE);	
 				
-				socket_recv($this->m_socket, $in_data, 
-								$rcvbuff, 0);				
-				return $in_data;
-			}	
+				return $totaldata;
+			}
+			return FALSE;
 		}
 		return FALSE;
 	}
@@ -215,12 +193,19 @@ class TcpSocket implements ITcpSocket
 		if($this->m_socket != NULL)
 		{
 			socket_shutdown($this->m_socket);
-			$this->connected = FALSE;
-			$this->listening = FALSE;
-			
+			$this->resetprops();
 			socket_close($this->m_socket);
 			$this->m_socket = NULL;
 		}
+	}
+	
+	private function resetprops()
+	{
+		$this->props = array("RemoteHost" => NULL, "RemoteIP" => NULL, 
+			"RemotePort" => NULL, "LocalHost" => NULL,
+			"LocalIP" => NULL, "LocalPort" => NULL,
+			"IsConnected" => FALSE, "IsListening" => FALSE,
+			"SelectInterval" => 500, "ReceiveBuffer" => 8192);
 	}
 	
 	//properties functions
@@ -234,25 +219,30 @@ class TcpSocket implements ITcpSocket
 	
 	public function __set($nm, $val)
 	{
-		switch ($nm)
+		
+		if(isset($this->props[$nm]))
 		{
-			case "ReceiveBuffer":
-				if($this->m_socket != NULL)
+			switch ($nm)
+			{
+				case "ReceiveBuffer":
+					if($this->m_socket != NULL)
+						socket_set_option($this->m_socket, SOL_SOCKET, SO_RCVBUF, $val);
+						
 					if($val <= 1024000 & $val > 0)
-						socket_set_option($this->m_socket, SOL_SOCKET, SO_RCVBUF, $val)
-					;
-			break;
-			
-			case "SelectInterval":
-				if($val <= 61440 & $val >= 0)
-					$this->props[$nm] = $val;
-			break;
-			
-			default:
-			break;	
+						$this->props[$nm] = $val;
+				break;
+				
+				case "SelectInterval":
+					if($val <= 61440 & $val >= 0)
+							$this->props[$nm] = $val;
+				break;
+				
+				default:
+				break;	
+			}
 		}
 	}
-	
+		
 } // end class TcpSocket
 
 ?>
