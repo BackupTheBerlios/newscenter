@@ -2,7 +2,7 @@
 /**********************************************************************************
 *     NewsCenter
 *     /Core/Class/NNTP_Parser.php
-*     Version: $Id: NNTP_Parser.php,v 1.1 2004/10/09 14:06:52 exodus Exp $
+*     Version: $Id: NNTP_Parser.php,v 1.2 2004/10/09 16:37:23 jcrawford Exp $
 *     Copyright (c) 2004, The NewsCenter Development Team
 
 *     Permission is hereby granted, free of charge, to any person obtaining
@@ -25,8 +25,6 @@
 *     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 *     SOFTWARE.
 *********************************************************************************/
-
-include_once(TcpSocket.php);
 
 class NNTP_Parser //implements INNTP_Parser
 {
